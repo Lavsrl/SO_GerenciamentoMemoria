@@ -1,8 +1,14 @@
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Random;
+import java.util.function.Function;
 
 public class Main {
+    private static final Random random = new Random();
+
     public static void main(String[] args) {
-        GerenciadorMemoria memoria = new GerenciadorMemoria(32);
+        int tamanhoMemoria = 32;
+
         List<Processo> processos = Arrays.asList(
                 new Processo("P1", 5),
                 new Processo("P2", 4),
@@ -16,33 +22,32 @@ public class Main {
                 new Processo("P10", 6)
         );
 
-        List<String> algoritmos = Arrays.asList("first", "next", "best", "quick", "worst");
+        GerenciadorMemoria memoria = new GerenciadorMemoria(tamanhoMemoria, processos);
 
-        for (String algoritmo : algoritmos) {
-            System.out.println("\n=== Executando com algoritmo: " + algoritmo.toUpperCase() + " ===");
-            executarSorteio(memoria, processos, algoritmo);
-
-            // Reinicia o estado da memória para o próximo algoritmo
-            memoria.resetarMemoria();
-        }
+        simular("First Fit", memoria::FirstFit, processos, memoria);
+        simular("Next Fit", memoria::NextFit, processos, memoria);
+        simular("Best Fit", memoria::BestFit, processos, memoria);
+        simular("Quick Fit", memoria::QuickFit, processos, memoria);
+        simular("Worst Fit", memoria::WorstFit, processos, memoria);
     }
 
-    private static void executarSorteio(GerenciadorMemoria memoria, List<Processo> processos, String algoritmo) {
-        Random random = new Random();
+    public static void simular(String nomeAlgoritmo, Function<Processo, Boolean> algoritmo, List<Processo> processos, GerenciadorMemoria gerenciador) {
+        gerenciador.inicializarQuickFit();
+
+        System.out.println("\n ** Algoritmo: " + nomeAlgoritmo + " **");
+        int menorTamanhoProcesso = processos.stream().mapToInt(Processo::getTamanho).min().orElse(1);
+
         for (int i = 0; i < 30; i++) {
             Processo processo = processos.get(random.nextInt(processos.size()));
-            if (memoria.isProcessoAlocado(processo.getId())) {
-                System.out.println("Sorteado: " + processo.getId() + " (Desalocando)");
-                memoria.desalocarProcesso(processo.getId());
+            if (processo.isAlocado()) {
+                gerenciador.desalocar(processo);
             } else {
-                System.out.println("Sorteado: " + processo.getId() + " (Alocando " + processo.getTamanho() + " blocos)");
-                boolean sucesso = memoria.alocar(processo.getId(), processo.getTamanho(), algoritmo);
-                if (!sucesso) {
-                    System.out.println("Falha ao alocar o processo " + processo.getId());
+                if (!algoritmo.apply(processo)) {
+                    System.out.println("Não foi possível alocar o " + processo.getId());
                 }
             }
-
-            memoria.imprimirMapaMemoria();
+            gerenciador.exibirMemoria();
+            System.out.println("Fragmentação externa: " + gerenciador.calcularFragmentacaoExterna(menorTamanhoProcesso));
         }
     }
 }

@@ -1,177 +1,166 @@
 import java.util.*;
 
 public class GerenciadorMemoria {
-    private int[] memoria;
-    private int ultimaPosicao = 0;
-    private Map<Integer, List<Integer>> quickFitMap;
+    private final int[] memoria;
+    private final int tamanhoMemoria;
+    private final List<Processo> processos;
+    private int ponteiroNextFit = 0;
+    private final Map<Integer, List<Integer>> quickFitLists = new HashMap<>();
 
-    public GerenciadorMemoria(int tamanho) {
-        this.memoria = new int[tamanho];
-        Arrays.fill(memoria, 0);
-        quickFitMap = new HashMap<>();
+    public GerenciadorMemoria(int tamanhoMemoria, List<Processo> processos) {
+        this.tamanhoMemoria = tamanhoMemoria;
+        this.memoria = new int[tamanhoMemoria];
+        this.processos = processos;
+        inicializarQuickFit();
     }
 
-    private int firstFit(int tamanho) {
-        int blocosLivres = 0;
-        for (int i = 0; i < memoria.length; i++) {
-            if (memoria[i] == 0) {
-                blocosLivres++;
-                if (blocosLivres == tamanho) {
-                    return i - tamanho + 1;
-                }
-            } else {
-                blocosLivres = 0;
-            }
-        }
-        return -1;
-    }
-
-    private int nextFit(int tamanho) {
-        int blocosLivres = 0;
-        for (int i = ultimaPosicao; i < memoria.length + ultimaPosicao; i++) {
-            int posicao = i % memoria.length;
-            if (memoria[posicao] == 0) {
-                blocosLivres++;
-                if (blocosLivres == tamanho) {
-                    ultimaPosicao = (posicao + 1) % memoria.length;
-                    return posicao - tamanho + 1;
-                }
-            } else {
-                blocosLivres = 0;
-            }
-        }
-        return -1;
-    }
-
-    private int bestFit(int tamanho) {
-        int melhorInicio = -1;
-        int menorEspaco = Integer.MAX_VALUE;
-
-        int blocosLivres = 0;
-        int inicioAtual = -1;
-
-        for (int i = 0; i < memoria.length; i++) {
-            if (memoria[i] == 0) {
-                if (blocosLivres == 0) {
-                    inicioAtual = i;
-                }
-                blocosLivres++;
-            } else {
-                if (blocosLivres >= tamanho && blocosLivres < menorEspaco) {
-                    menorEspaco = blocosLivres;
-                    melhorInicio = inicioAtual;
-                }
-                blocosLivres = 0;
-            }
-        }
-        if (blocosLivres >= tamanho && blocosLivres < menorEspaco) {
-            melhorInicio = inicioAtual;
-        }
-
-        return melhorInicio;
-    }
-
-    private int quickFit(int tamanho) {
-        if (quickFitMap.containsKey(tamanho) && !quickFitMap.get(tamanho).isEmpty()) {
-            return quickFitMap.get(tamanho).remove(0);
-        }
-        return firstFit(tamanho);
-    }
-
-    private int worstFit(int tamanho) {
-        int piorInicio = -1;
-        int maiorEspaco = -1;
-
-        int blocosLivres = 0;
-        int inicioAtual = -1;
-
-        for (int i = 0; i < memoria.length; i++) {
-            if (memoria[i] == 0) {
-                if (blocosLivres == 0) {
-                    inicioAtual = i;
-                }
-                blocosLivres++;
-            } else {
-                if (blocosLivres >= tamanho && blocosLivres > maiorEspaco) {
-                    maiorEspaco = blocosLivres;
-                    piorInicio = inicioAtual;
-                }
-                blocosLivres = 0;
-            }
-        }
-
-        if (blocosLivres >= tamanho && blocosLivres > maiorEspaco) {
-            piorInicio = inicioAtual;
-        }
-
-        return piorInicio;
-    }
-
-    public void desalocar(int processo) {
-        for (int i = 0; i < memoria.length; i++) {
-            if (memoria[i] == processo) {
-                memoria[i] = 0; // Marca como livre
-            }
-        }
-    }
-
-    public boolean alocar(String processoId, int tamanho, String estrategia) {
-        int inicio = -1;
-
-        switch (estrategia.toLowerCase()) {
-            case "first":
-                inicio = firstFit(tamanho);
-                break;
-            case "next":
-                inicio = nextFit(tamanho);
-                break;
-            case "best":
-                inicio = bestFit(tamanho);
-                break;
-            case "quick":
-                inicio = quickFit(tamanho);
-                break;
-            case "worst":
-                inicio = worstFit(tamanho);
-                break;
-            default:
-                throw new IllegalArgumentException("Estratégia inválida.");
-        }
-
-        if (inicio != -1) {
-            for (int i = inicio; i < inicio + tamanho; i++) {
-                memoria[i] = processoId.hashCode(); // Marca os blocos como alocados para o processo
-            }
-            System.out.println("Processo " + processoId + " alocado no bloco " + inicio);
-            return true; // Alocação bem-sucedida
-        } else {
-            System.out.println("Não foi possível alocar o processo " + processoId + " (" + estrategia + ").");
-            return false; // Falha na alocação
-        }
-    }
-
-    public boolean isProcessoAlocado(String processoId) {
-        for (int bloco : memoria) {
-            if (bloco == processoId.hashCode()) {
+    public boolean FirstFit(Processo processo) {
+        for (int i = 0; i <= tamanhoMemoria - processo.getTamanho(); i++) {
+            if (isLivre(i, processo.getTamanho())) {
+                alocar(processo, i);
+                return true;
             }
         }
         return false;
     }
 
-    public void desalocarProcesso(String processoId) {
-        desalocar(processoId.hashCode());
+    public boolean NextFit(Processo processo) {
+        int start = ponteiroNextFit;
+        do {
+            if (isLivre(ponteiroNextFit, processo.getTamanho())) {
+                alocar(processo, ponteiroNextFit);
+                return true;
+            }
+            ponteiroNextFit = (ponteiroNextFit + 1) % tamanhoMemoria;
+        } while (ponteiroNextFit != start);
+        return false;
     }
 
-    public void resetarMemoria() {
-        Arrays.fill(memoria, 0);
-        ultimaPosicao = 0;
+    public boolean BestFit(Processo processo) {
+        int melhorIndice = -1;
+        int menorTamanho = Integer.MAX_VALUE;
+
+        for (int i = 0; i <= tamanhoMemoria - processo.getTamanho(); i++) {
+            if (isLivre(i, processo.getTamanho())) {
+                int tamanhoLivre = calcularBlocoLivre(i);
+                if (tamanhoLivre < menorTamanho) {
+                    melhorIndice = i;
+                    menorTamanho = tamanhoLivre;
+                }
+            }
+        }
+
+        if (melhorIndice != -1) {
+            alocar(processo, melhorIndice);
+            return true;
+        }
+        return false;
     }
 
-    public void imprimirMapaMemoria() {
-        System.out.println(Arrays.toString(memoria));
+    public boolean QuickFit(Processo processo) {
+        List<Integer> listaTamanho = quickFitLists.get(processo.getTamanho());
+        if (listaTamanho != null && !listaTamanho.isEmpty()) {
+            int indice = listaTamanho.remove(0);
+            alocar(processo, indice);
+            return true;
+        }
+        return FirstFit(processo);
+    }
+
+    public boolean WorstFit(Processo processo) {
+        int piorIndice = -1;
+        int maiorTamanho = -1;
+
+        for (int i = 0; i <= tamanhoMemoria - processo.getTamanho(); i++) {
+            if (isLivre(i, processo.getTamanho())) {
+                int tamanhoLivre = calcularBlocoLivre(i);
+                if (tamanhoLivre > maiorTamanho) {
+                    piorIndice = i;
+                    maiorTamanho = tamanhoLivre;
+                }
+            }
+        }
+
+        if (piorIndice != -1) {
+            alocar(processo, piorIndice);
+            return true;
+        }
+        return false;
+    }
+
+
+
+    public void desalocar(Processo processo) {
+        for (int i = processo.getInicio(); i < processo.getInicio() + processo.getTamanho(); i++) {
+            memoria[i] = 0;
+        }
+        atualizarQuickFit(processo.getInicio(), processo.getTamanho());
+        System.out.println("Processo " + processo.getId() + " desalocado.");
+        processo.desalocarProcesso();
+    }
+
+    public boolean isLivre(int inicio, int tamanho) {
+        if (inicio + tamanho > tamanhoMemoria) {
+            return false; // Evita acessar fora dos limites da memória
+        }
+        for (int i = inicio; i < inicio + tamanho; i++) {
+            if (memoria[i] == 1) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public int calcularBlocoLivre(int inicio) {
+        int tamanho = 0;
+        for (int i = inicio; i < tamanhoMemoria && memoria[i] == 0; i++) {
+            tamanho++;
+        }
+        return tamanho;
+    }
+
+    public int calcularFragmentacaoExterna(int menorTamanhoProcesso) {
+        int fragmentacao = 0;
+        int tamanhoAtual = 0;
+
+        for (int i = 0; i < tamanhoMemoria; i++) {
+            if (memoria[i] == 0) {
+                tamanhoAtual++;
+            } else {
+                if (tamanhoAtual > 0 && tamanhoAtual < menorTamanhoProcesso) {
+                    fragmentacao += tamanhoAtual;
+                }
+                tamanhoAtual = 0;
+            }
+        }
+
+        if (tamanhoAtual > 0 && tamanhoAtual < menorTamanhoProcesso) {
+            fragmentacao += tamanhoAtual;
+        }
+
+        return fragmentacao;
+    }
+
+    public void alocar(Processo processo, int inicio) {
+        for (int i = inicio; i < inicio + processo.getTamanho(); i++) {
+            memoria[i] = 1;
+        }
+        processo.alocarProcesso(inicio);
+        System.out.println("Processo " + processo.getId() + " alocado em " + inicio);
     }
 
     public void exibirMemoria() {
         System.out.println(Arrays.toString(memoria));
+    }
+
+    public void inicializarQuickFit() {
+        quickFitLists.clear();
+        for (int i = 1; i <= tamanhoMemoria; i++) {
+            quickFitLists.put(i, new ArrayList<>());
+        }
+    }
+
+    public void atualizarQuickFit(int inicio, int tamanho) {
+        quickFitLists.get(tamanho).add(inicio);
     }
 }
