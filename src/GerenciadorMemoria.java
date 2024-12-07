@@ -88,8 +88,6 @@ public class GerenciadorMemoria {
         return false;
     }
 
-
-
     public void desalocar(Processo processo) {
         for (int i = processo.getInicio(); i < processo.getInicio() + processo.getTamanho(); i++) {
             memoria[i] = 0;
@@ -101,7 +99,7 @@ public class GerenciadorMemoria {
 
     public boolean isLivre(int inicio, int tamanho) {
         if (inicio + tamanho > tamanhoMemoria) {
-            return false; // Evita acessar fora dos limites da memória
+            return false;
         }
         for (int i = inicio; i < inicio + tamanho; i++) {
             if (memoria[i] == 1) {

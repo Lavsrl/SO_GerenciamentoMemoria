@@ -43,7 +43,7 @@ public class Main {
                 gerenciador.desalocar(processo);
             } else {
                 if (!algoritmo.apply(processo)) {
-                    System.out.println("Não foi possível alocar o " + processo.getId());
+                    System.out.println("Erro: Não foi possível alocar o " + processo.getId());
                 }
             }
             gerenciador.exibirMemoria();
