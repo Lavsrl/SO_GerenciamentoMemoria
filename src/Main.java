@@ -33,7 +33,6 @@ public class Main {
 
     public static void simular(String nomeAlgoritmo, Function<Processo, Boolean> algoritmo, List<Processo> processos, GerenciadorMemoria gerenciador) {
         gerenciador.inicializarQuickFit();
-
         System.out.println("\n ** Algoritmo: " + nomeAlgoritmo + " **");
         int menorTamanhoProcesso = processos.stream().mapToInt(Processo::getTamanho).min().orElse(1);
 

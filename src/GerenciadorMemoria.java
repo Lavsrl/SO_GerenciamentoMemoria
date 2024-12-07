@@ -70,7 +70,6 @@ public class GerenciadorMemoria {
     public boolean WorstFit(Processo processo) {
         int piorIndice = -1;
         int maiorTamanho = -1;
-
         for (int i = 0; i <= tamanhoMemoria - processo.getTamanho(); i++) {
             if (isLivre(i, processo.getTamanho())) {
                 int tamanhoLivre = calcularBlocoLivre(i);
